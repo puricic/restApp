@@ -1,0 +1,17 @@
+{
+  "name": "GymRest Pro",
+  "short_name": "GymRest",
+  "description": "Timer automatico per il recupero in palestra",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#00ff88",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/857/857686.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

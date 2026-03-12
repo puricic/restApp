@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <title>GymRest Alternato</title>
+    <style>
+        :root { --primary: #00ff88; --secondary: #00e5ff; --bg: #121212; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg); color: white; margin: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+        }
+        .setup-container { display: flex; gap: 20px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; align-items: center; }
+        input { 
+            width: 60px; padding: 10px; border-radius: 10px; border: 1px solid #444; 
+            background: #222; color: white; text-align: center; font-size: 1.2rem;
+        }
+        label { font-size: 0.8rem; color: #888; margin-bottom: 5px; }
+        .timer-display { font-size: 8rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .active-a { color: var(--primary) !important; }
+        .active-b { color: var(--secondary) !important; }
+        
+        .controls { display: flex; flex-direction: column; gap: 15px; width: 85%; }
+        button { padding: 20px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; }
+        .btn-start { background-color: var(--primary); color: black; }
+        .btn-stop { background-color: #ff4444; color: white; }
+        .status { font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; transition: 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="setup-container">
+        <div class="input-group">
+            <label>Timer A (s)</label>
+            <input type="number" id="timeA" value="30">
+        </div>
+        <div class="input-group">
+            <label>Timer B (s)</label>
+            <input type="number" id="timeB" value="60">
+        </div>
+    </div>
+
+    <div id="statusText" class="status">PRONTO: TIMER A</div>
+    <div id="timer" class="timer-display active-a">30</div>
+
+    <div class="controls">
+        <button class="btn-start" onclick="toggleTimer()" id="mainBtn">AVVIA RECUPERO</button>
+        <button style="background:#333; color:white;" onclick="resetTimer()">RESET</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
+    
+    <script>
+        let timeLeft = 30;
+        let timerId = null;
+        let isRunning = false;
+        let currentMode = 'A'; // Può essere 'A' o 'B'
+        const noSleep = new NoSleep();
+
+        function toggleTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                noSleep.enable();
+                document.getElementById('mainBtn').innerText = "STOP";
+                document.getElementById('mainBtn').className = "btn-stop";
+                
+                // Prende il tempo dall'input corrente se appena iniziato
+                const valA = parseInt(document.getElementById('timeA').value);
+                const valB = parseInt(document.getElementById('timeB').value);
+                
+                timerId = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('timer').innerText = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        completeCycle(valA, valB);
+                    }
+                }, 1000);
+            } else {
+                stopTimer();
+            }
+        }
+
+        function stopTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            noSleep.disable();
+            document.getElementById('mainBtn').innerText = "RIPRENDI";
+            document.getElementById('mainBtn').className = "btn-start";
+        }
+
+        function completeCycle(valA, valB) {
+            stopTimer();
+            suona();
+            
+            // Alterna la modalità
+            if (currentMode === 'A') {
+                currentMode = 'B';
+                timeLeft = valB;
+                document.getElementById('statusText').innerText = "PROSSIMO: TIMER B";
+                document.getElementById('timer').className = "timer-display active-b";
+            } else {
+                currentMode = 'A';
+                timeLeft = valA;
+                document.getElementById('statusText').innerText = "PROSSIMO: TIMER A";
+                document.getElementById('timer').className = "timer-display active-a";
+            }
+            
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('mainBtn').innerText = "AVVIA PROSSIMO";
+        }
+
+        function suona() {
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            osc.type = 'beep';
+            osc.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.8);
+        }
+
+        function resetTimer() {
+            stopTimer();
+            currentMode = 'A';
+            timeLeft = parseInt(document.getElementById('timeA').value);
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('timer').className = "timer-display active-a";
+            document.getElementById('statusText').innerText = "PRONTO: TIMER A";
+            document.getElementById('mainBtn').innerText = "AVVIA RECUPERO";
+        }
+    </script>
+</body>
+</html>
