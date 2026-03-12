@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-    <title>GymRest Ultra</title>
+    <title>GymRest Ultra Fix</title>
     <style>
         :root { --timer-a: #00ff88; --timer-b: #ff9500; --bg: #121212; }
         body { 
@@ -22,18 +22,18 @@
         }
         label { font-size: 0.7rem; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
         
-        .timer-display { font-size: 9rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; transition: color 0.3s; }
+        .timer-display { font-size: 9rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; }
         .active-a { color: var(--timer-a); text-shadow: 0 0 30px rgba(0,255,136,0.2); }
         .active-b { color: var(--timer-b); text-shadow: 0 0 30px rgba(255,149,0,0.2); }
         
-        .rounds-display { font-size: 1.5rem; color: #aaa; margin-bottom: 10px; font-weight: 300; }
-        .rounds-display span { color: white; font-weight: bold; }
+        .rounds-display { font-size: 1.8rem; color: #aaa; margin-bottom: 10px; }
+        .rounds-display span { color: white; font-weight: bold; border-bottom: 2px solid var(--timer-a); }
 
         .controls { display: flex; flex-direction: column; gap: 15px; width: 85%; max-width: 400px; }
         button { padding: 22px; font-size: 1.3rem; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; text-transform: uppercase; }
         .btn-start { background-color: white; color: black; }
         .btn-stop { background-color: #ff3b30; color: white; }
-        .status { font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 5px; height: 1.5rem; color: #666; }
+        .status { font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 5px; height: 1.5rem; color: #666; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -48,18 +48,18 @@
             <input type="number" id="timeB" value="60" oninput="updateUI()">
         </div>
         <div class="input-group">
-            <label>Ripetizioni</label>
+            <label>Serie Totali</label>
             <input type="number" id="totalRounds" value="4" oninput="updateUI()">
         </div>
     </div>
 
-    <div id="statusText" class="status">PRONTO ALL'AVVIO</div>
-    <div id="roundText" class="rounds-display">Serie <span>1</span> di 4</div>
+    <div id="statusText" class="status">PRONTO</div>
+    <div id="roundText" class="rounds-display">Serie <span id="currentRoundSpan">1</span> di <span id="totalRoundSpan">4</span></div>
     <div id="timer" class="timer-display active-a">30</div>
 
     <div class="controls">
-        <button class="btn-start" onclick="toggleTimer()" id="mainBtn">Start Allenamento</button>
-        <button style="background:#222; color:#888; padding: 10px; font-size: 0.9rem;" onclick="resetTimer()">Reset Totale</button>
+        <button class="btn-start" onclick="toggleTimer()" id="mainBtn">AVVIA</button>
+        <button style="background:#222; color:#888; padding: 10px; font-size: 0.8rem; margin-top: 10px;" onclick="resetTimer()">RESET</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
@@ -72,14 +72,19 @@
         let currentRound = 1;
         const noSleep = new NoSleep();
 
+        // Forza l'aggiornamento visivo dei numeri
         function updateUI() {
+            const valA = parseInt(document.getElementById('timeA').value) || 0;
+            const valB = parseInt(document.getElementById('timeB').value) || 0;
+            const totalR = parseInt(document.getElementById('totalRounds').value) || 1;
+
             if (!isRunning) {
-                const valA = parseInt(document.getElementById('timeA').value) || 0;
-                const totalR = document.getElementById('totalRounds').value;
-                timeLeft = (currentMode === 'A') ? valA : parseInt(document.getElementById('timeB').value);
+                timeLeft = (currentMode === 'A') ? valA : valB;
                 document.getElementById('timer').innerText = timeLeft;
-                document.getElementById('roundText').innerHTML = `Serie <span>${currentRound}</span> di ${totalR}`;
             }
+            
+            document.getElementById('currentRoundSpan').innerText = currentRound;
+            document.getElementById('totalRoundSpan').innerText = totalR;
         }
 
         function toggleTimer() {
@@ -93,7 +98,7 @@
         function startLogic() {
             isRunning = true;
             noSleep.enable();
-            document.getElementById('mainBtn').innerText = "Pausa";
+            document.getElementById('mainBtn').innerText = "PAUSA";
             document.getElementById('mainBtn').className = "btn-stop";
             document.getElementById('statusText').innerText = "RECUPERO " + currentMode;
             
@@ -112,29 +117,34 @@
             clearInterval(timerId);
             isRunning = false;
             noSleep.disable();
-            document.getElementById('mainBtn').innerText = "Riprendi";
+            document.getElementById('mainBtn').innerText = "RIPRENDI";
             document.getElementById('mainBtn').className = "btn-start";
+            document.getElementById('statusText').innerText = "IN PAUSA";
         }
 
         function handleTransition() {
-            const totalR = parseInt(document.getElementById('totalRounds').value);
+            const totalR = parseInt(document.getElementById('totalRounds').value) || 1;
             const valA = parseInt(document.getElementById('timeA').value) || 0;
             const valB = parseInt(document.getElementById('timeB').value) || 0;
 
-            beepSuccess();
+            playTripleBeep();
 
             if (currentMode === 'A') {
+                // Passa a B (stessa serie)
                 currentMode = 'B';
                 timeLeft = valB;
                 document.getElementById('timer').className = "timer-display active-b";
+                document.getElementById('statusText').innerText = "RECUPERO B";
                 startLogic();
             } else {
+                // Finito B, controlla se ci sono altre serie
                 if (currentRound < totalR) {
                     currentRound++;
                     currentMode = 'A';
                     timeLeft = valA;
                     document.getElementById('timer').className = "timer-display active-a";
-                    updateUI();
+                    document.getElementById('statusText').innerText = "RECUPERO A";
+                    updateUI(); // Qui aggiorna il numero della serie a video
                     startLogic();
                 } else {
                     finishWorkout();
@@ -142,36 +152,37 @@
             }
         }
 
-        function beepSuccess() {
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+        function playTripleBeep() {
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 150]);
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            function playTone(freq, time) {
+            function beep(freq, start) {
                 const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
+                const g = audioCtx.createGain();
+                osc.connect(g);
+                g.connect(audioCtx.destination);
                 osc.frequency.value = freq;
-                gain.gain.setValueAtTime(0.1, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-                osc.start(time);
-                osc.stop(time + 0.1);
+                g.gain.setValueAtTime(0.2, start);
+                g.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+                osc.start(start);
+                osc.stop(start + 0.1);
             }
 
             const now = audioCtx.currentTime;
-            playTone(880, now);
-            playTone(880, now + 0.15);
-            playTone(1320, now + 0.3);
+            beep(600, now);
+            beep(600, now + 0.15);
+            beep(1200, now + 0.3);
         }
 
         function finishWorkout() {
             isRunning = false;
             noSleep.disable();
-            document.getElementById('statusText').innerText = "ALLENAMENTO FINITO!";
-            document.getElementById('mainBtn').innerText = "Ricomincia";
+            document.getElementById('statusText').innerText = "COMPLETATO! 🎉";
+            document.getElementById('mainBtn').innerText = "RIGIOCA";
             document.getElementById('mainBtn').className = "btn-start";
             currentRound = 1;
             currentMode = 'A';
+            updateUI();
         }
 
         function resetTimer() {
@@ -179,10 +190,13 @@
             currentRound = 1;
             currentMode = 'A';
             document.getElementById('timer').className = "timer-display active-a";
+            document.getElementById('statusText').innerText = "PRONTO";
+            document.getElementById('mainBtn').innerText = "AVVIA";
             updateUI();
-            document.getElementById('statusText').innerText = "PRONTO ALL'AVVIO";
-            document.getElementById('mainBtn').innerText = "Start Allenamento";
         }
+        
+        // Inizializzazione al caricamento
+        updateUI();
     </script>
 </body>
 </html>
