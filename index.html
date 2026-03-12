@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <link rel="apple-touch-icon" href="icon.png">
-    <meta name="apple-mobile-web-app-title" content="GymRest">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GymRest">
+    <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
-    <title>GymRest Ultra Fix</title>
+    <title>GymRest Ultra Pro</title>
     <style>
         :root { --timer-a: #00ff88; --timer-b: #ff9500; --bg: #121212; }
         body { 
             font-family: -apple-system, system-ui, sans-serif;
             background-color: var(--bg); color: white; margin: 0; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
-            user-select: none; touch-action: manipulation;
+            user-select: none; touch-action: manipulation; overflow: hidden;
         }
         .setup-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
         .input-group { display: flex; flex-direction: column; align-items: center; }
@@ -24,15 +25,15 @@
         }
         label { font-size: 0.7rem; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
         
-        .timer-display { font-size: 9rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; }
+        .timer-display { font-size: 9rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; transition: color 0.3s; }
         .active-a { color: var(--timer-a); text-shadow: 0 0 30px rgba(0,255,136,0.2); }
         .active-b { color: var(--timer-b); text-shadow: 0 0 30px rgba(255,149,0,0.2); }
         
         .rounds-display { font-size: 1.8rem; color: #aaa; margin-bottom: 10px; }
-        .rounds-display span { color: white; font-weight: bold; border-bottom: 2px solid var(--timer-a); }
+        .rounds-display span { color: white; font-weight: bold; border-bottom: 2px solid white; }
 
         .controls { display: flex; flex-direction: column; gap: 15px; width: 85%; max-width: 400px; }
-        button { padding: 22px; font-size: 1.3rem; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; text-transform: uppercase; }
+        button { padding: 22px; font-size: 1.3rem; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; text-transform: uppercase; transition: opacity 0.2s; }
         .btn-start { background-color: white; color: black; }
         .btn-stop { background-color: #ff3b30; color: white; }
         .status { font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 5px; height: 1.5rem; color: #666; font-weight: bold; }
@@ -61,7 +62,7 @@
 
     <div class="controls">
         <button class="btn-start" onclick="toggleTimer()" id="mainBtn">AVVIA</button>
-        <button style="background:#222; color:#888; padding: 10px; font-size: 0.8rem; margin-top: 10px;" onclick="resetTimer()">RESET</button>
+        <button style="background:#222; color:#888; padding: 10px; font-size: 0.8rem;" onclick="resetTimer()">RESET</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
@@ -72,9 +73,24 @@
         let isRunning = false;
         let currentMode = 'A'; 
         let currentRound = 1;
+        let audioCtx = null;
         const noSleep = new NoSleep();
 
-        // Forza l'aggiornamento visivo dei numeri
+        // Funzione per inizializzare l'audio su iOS (deve essere chiamata da un tocco utente)
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start(0);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
         function updateUI() {
             const valA = parseInt(document.getElementById('timeA').value) || 0;
             const valB = parseInt(document.getElementById('timeB').value) || 0;
@@ -90,6 +106,7 @@
         }
 
         function toggleTimer() {
+            initAudio(); // Sblocca audio su iPhone al click
             if (!isRunning) {
                 startLogic();
             } else {
@@ -132,21 +149,17 @@
             playTripleBeep();
 
             if (currentMode === 'A') {
-                // Passa a B (stessa serie)
                 currentMode = 'B';
                 timeLeft = valB;
                 document.getElementById('timer').className = "timer-display active-b";
-                document.getElementById('statusText').innerText = "RECUPERO B";
                 startLogic();
             } else {
-                // Finito B, controlla se ci sono altre serie
                 if (currentRound < totalR) {
                     currentRound++;
                     currentMode = 'A';
                     timeLeft = valA;
                     document.getElementById('timer').className = "timer-display active-a";
-                    document.getElementById('statusText').innerText = "RECUPERO A";
-                    updateUI(); // Qui aggiorna il numero della serie a video
+                    updateUI();
                     startLogic();
                 } else {
                     finishWorkout();
@@ -155,9 +168,10 @@
         }
 
         function playTripleBeep() {
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 150]);
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
             
+            if (!audioCtx) initAudio();
+
             function beep(freq, start) {
                 const osc = audioCtx.createOscillator();
                 const g = audioCtx.createGain();
@@ -165,22 +179,22 @@
                 g.connect(audioCtx.destination);
                 osc.frequency.value = freq;
                 g.gain.setValueAtTime(0.2, start);
-                g.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+                g.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
                 osc.start(start);
-                osc.stop(start + 0.1);
+                osc.stop(start + 0.15);
             }
 
             const now = audioCtx.currentTime;
-            beep(600, now);
-            beep(600, now + 0.15);
-            beep(1200, now + 0.3);
+            beep(700, now);
+            beep(700, now + 0.2);
+            beep(1400, now + 0.4);
         }
 
         function finishWorkout() {
             isRunning = false;
             noSleep.disable();
-            document.getElementById('statusText').innerText = "COMPLETATO! 🎉";
-            document.getElementById('mainBtn').innerText = "RIGIOCA";
+            document.getElementById('statusText').innerText = "FINITO! 🎉";
+            document.getElementById('mainBtn').innerText = "RIFAI";
             document.getElementById('mainBtn').className = "btn-start";
             currentRound = 1;
             currentMode = 'A';
@@ -192,14 +206,13 @@
             currentRound = 1;
             currentMode = 'A';
             document.getElementById('timer').className = "timer-display active-a";
+            updateUI();
             document.getElementById('statusText').innerText = "PRONTO";
             document.getElementById('mainBtn').innerText = "AVVIA";
-            updateUI();
+            document.getElementById('mainBtn').className = "btn-start";
         }
         
-        // Inizializzazione al caricamento
         updateUI();
     </script>
 </body>
 </html>
-
